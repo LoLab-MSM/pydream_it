@@ -22,8 +22,9 @@ def write_uniform_param(p_name, p_val):
     return line
 
 model_file = sys.argv[1]
-
+print("Using model from file: {}".format(model_file))
 default_prior_shape = 'norm'
+print("The default prior shape is: {}".format(default_prior_shape))
 use_GR_converge = False
 #print(model_file)
 model_module_name = model_file[:-3]
@@ -34,6 +35,7 @@ model = getattr(model_module, 'model')
 priors = dict()
 no_sample = list()
 #Read the file and parse any #PYDREAM_IT directives
+print("Parsing the model for any #PYDREAM_IT directives...")
 with open(model_file, 'r') as file_obj:
     for line in file_obj:
         words = line.split()
@@ -43,7 +45,7 @@ with open(model_file, 'r') as file_obj:
 
 #now we need to extract a list of kinetic parameters
 parameters = list()
-
+print("Inspecting the model and pulling out kinetic parameters...")
 for rule in model.rules:
     rule_keys = rule.__dict__.keys()
     #print(rule_keys)
@@ -56,11 +58,12 @@ for rule in model.rules:
         #print(param)
         if param is not None:
             parameters.append([param.name, param.value, 'r'])
-print(parameters)
-print(no_sample)
+#print(parameters)
+#print(no_sample)
 parameters = prune_no_samples(parameters, no_sample)
-print(parameters)
-
+#print(parameters)
+print("Found the following kinetic parameters:")
+print("{}".format(parameters))
 #default the priors to norm - i.e. normal distributions
 for parameter in parameters:
     name = parameter[0]
@@ -68,7 +71,7 @@ for parameter in parameters:
         priors[name] = default_prior_shape
 
 out_file = open("run_pydream_"+model_file, 'w')
-
+print("Writing to PyDREAM run script: run_pydream_{}".format(model_file))
 out_file.write("from pydream.core import run_dream\n")
 out_file.write("from pysb.integrate import Solver\n")
 out_file.write("import numpy as np\n")
@@ -91,6 +94,7 @@ out_file.write("tspan = np.linspace(0,10, num=100)\n")
 out_file.write("solver = Solver(model, tspan)\n")
 out_file.write("solver.run()\n")
 out_file.write("\n")
+out_file.write("# USER must add commands to import/load any experimental data for use in the likelihood function!\n")
 out_file.write("# USER must define a likelihood function!\n")
 out_file.write("def likelihood(param_vector):\n")
 out_file.write("    pass\n")
@@ -101,7 +105,7 @@ for parameter in parameters:
     name = parameter[0]
     value = parameter[1]
     prior_shape = priors[name]
-    #print(name)
+    print("Will sample parameter {} with {} prior around {}".format(name, prior_shape, value))
     if prior_shape == 'uniform':
         line = write_uniform_param(name, value)
         ps_name = line.split()[0]
@@ -124,3 +128,5 @@ else:
     out_file.write("    np.save(\'dreamzs_5chain_logps_chain_\' + str(chain)+\'_\'+str(total_iterations), log_ps[chain])\n")
 
 out_file.close()
+print("pydream_it is complete!")
+print("END OF LINE.")
