@@ -1,10 +1,17 @@
 import sys
 import importlib
 
-def parse_directive(directive, priors):
+def parse_directive(directive, priors, no_sample):
     words = directive.split()
     if words[1] == 'prior':
         priors[words[2]] = words[3]
+    elif words[1] == 'no-sample':
+        no_sample.append(words[2])
+    return
+
+def prune_no_samples(parameters, no_sample):
+    parameters = [parameter for parameter in parameters if parameter[0] not in no_sample]
+    return parameters
 
 def write_norm_param(p_name, p_val):
     line = "sp_{} = SampledParam(norm, loc=np.log10({}), scale=2.0)\n".format(p_name, p_val)
@@ -25,13 +32,14 @@ model_module = importlib.import_module(model_module_name)
 model = getattr(model_module, 'model')
 #print(model)
 priors = dict()
+no_sample = list()
 #Read the file and parse any #PYDREAM_IT directives
 with open(model_file, 'r') as file_obj:
     for line in file_obj:
         words = line.split()
         if len(words) > 1:
             if words[0] == '#PYDREAM_IT':
-                parse_directive(line, priors)
+                parse_directive(line, priors, no_sample)
 
 #now we need to extract a list of kinetic parameters
 parameters = list()
@@ -48,7 +56,11 @@ for rule in model.rules:
         #print(param)
         if param is not None:
             parameters.append([param.name, param.value, 'r'])
-#print(parameters)
+print(parameters)
+print(no_sample)
+parameters = prune_no_samples(parameters, no_sample)
+print(parameters)
+
 #default the priors to norm - i.e. normal distributions
 for parameter in parameters:
     name = parameter[0]
@@ -94,7 +106,7 @@ for parameter in parameters:
         line = write_uniform_param(name, value)
         ps_name = line.split()[0]
         out_file.write(line)
-        out_file.write("sampled_params_list.append(ps_name)\n")
+        out_file.write("sampled_params_list.append({})\n".format(ps_name))
     else:
         line = write_norm_param(name, value)
         ps_name = line.split()[0]
