@@ -1,17 +1,26 @@
 import sys
 import importlib
 
+def is_numbers(inputString):
+    return all(char.isdigit() for char in inputString)
+
 def parse_directive(directive, priors, no_sample):
     words = directive.split()
     if words[1] == 'prior':
         priors[words[2]] = words[3]
     elif words[1] == 'no-sample':
-        no_sample.append(words[2])
+        if is_numbers(words[2]):
+            par_idx = int(words[2])
+            par = model.parameters[par_idx].name
+        else:
+            par = words[2]
+        no_sample.append(par)
     return
 
 def prune_no_samples(parameters, no_sample):
-    parameters = [parameter for parameter in parameters if parameter[0] not in no_sample]
-    return parameters
+    pruned_pars = [parameter for parameter in parameters if parameter[0].name not in no_sample]
+
+    return pruned_pars
 
 def write_norm_param(p_name, p_val):
     line = "sp_{} = SampledParam(norm, loc=np.log10({}), scale=2.0)\n".format(p_name, p_val)
@@ -47,17 +56,15 @@ with open(model_file, 'r') as file_obj:
 parameters = list()
 print("Inspecting the model and pulling out kinetic parameters...")
 for rule in model.rules:
-    rule_keys = rule.__dict__.keys()
     #print(rule_keys)
-    if 'rate_forward' in rule_keys:
-        param = rule.__dict__['rate_forward']
+    if rule.rate_forward:
+        param = rule.rate_forward
         #print(param)
-        parameters.append([param.name, param.value,'f'])
-    if 'rate_reverse' in rule_keys:
-        param = rule.__dict__['rate_reverse']
+        parameters.append([param,'f'])
+    if rule.rate_reverse:
+        param = rule.rate_reverse
         #print(param)
-        if param is not None:
-            parameters.append([param.name, param.value, 'r'])
+        parameters.append([param, 'r'])
 #print(parameters)
 #print(no_sample)
 parameters = prune_no_samples(parameters, no_sample)
@@ -66,14 +73,19 @@ print("Found the following kinetic parameters:")
 print("{}".format(parameters))
 #default the priors to norm - i.e. normal distributions
 for parameter in parameters:
-    name = parameter[0]
+    name = parameter[0].name
     if name not in priors.keys():
         priors[name] = default_prior_shape
+
+# Obtain mask of sampled parameters to run simulation in the likelihood function
+parameters_idxs = [model.parameters.index(parameter[0]) for parameter in parameters]
+rates_mask = [i in parameters_idxs for i in range(len(model.parameters))]
+param_values = [p.value for p in model.parameters]
 
 out_file = open("run_pydream_"+model_file, 'w')
 print("Writing to PyDREAM run script: run_pydream_{}".format(model_file))
 out_file.write("from pydream.core import run_dream\n")
-out_file.write("from pysb.integrate import Solver\n")
+out_file.write("from pysb.simulator import ScipyOdeSimulator\n")
 out_file.write("import numpy as np\n")
 out_file.write("from pydream.parameters import SampledParam\n")
 #out_file.write("from pydream.convergence import Gelman_Rubin")
@@ -91,19 +103,28 @@ out_file.write("niterations = 50000\n")
 out_file.write("\n")
 out_file.write("#Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.\n")
 out_file.write("tspan = np.linspace(0,10, num=100)\n")
-out_file.write("solver = Solver(model, tspan)\n")
-out_file.write("solver.run()\n")
+out_file.write("solver = ScipyOdeSimulator(model, tspan)\n")
+out_file.write("parameters_idxs = " + str(parameters_idxs)+"\n")
+out_file.write("rates_mask = " + "[i in parameters_idxs for i in range(len(model.parameters))]\n" )
+out_file.write("param_values = np.array([p.value for p in model.parameters])\n" )
 out_file.write("\n")
 out_file.write("# USER must add commands to import/load any experimental data for use in the likelihood function!\n")
+out_file.write("experiments_avg = np.load()\n")
+out_file.write("experiments_sd = np.load()\n")
+out_file.write("like_data = norm(loc=experiments_avg, scale=experiments_sd)\n")
 out_file.write("# USER must define a likelihood function!\n")
-out_file.write("def likelihood(param_vector):\n")
-out_file.write("    pass\n")
+out_file.write("def likelihood(position):\n")
+out_file.write("    Y=np.copy(position)\n")
+out_file.write("    param_values[rates_mask] = 10 ** Y\n")
+out_file.write("    sim = solver.run(param_values).all\n")
+out_file.write("    logp_data = np.sum(like_data.logpdf(sim['observable']))\n")
+out_file.write("    return logp_data\n")
 out_file.write("\n")
 #write the sampled params lines
 out_file.write("sampled_params_list = list()\n")
 for parameter in parameters:
-    name = parameter[0]
-    value = parameter[1]
+    name = parameter[0].name
+    value = parameter[0].value
     prior_shape = priors[name]
     print("Will sample parameter {} with {} prior around {}".format(name, prior_shape, value))
     if prior_shape == 'uniform':
