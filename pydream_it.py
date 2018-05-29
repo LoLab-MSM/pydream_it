@@ -7,7 +7,12 @@ def is_numbers(inputString):
 def parse_directive(directive, priors, no_sample):
     words = directive.split()
     if words[1] == 'prior':
-        priors[words[2]] = words[3]
+        if is_numbers(words[2]):
+            par_idx = int(words[2])
+            par = model.parameters[par_idx].name
+        else:
+            par = words[2]    
+        priors[par] = words[3]
     elif words[1] == 'no-sample':
         if is_numbers(words[2]):
             par_idx = int(words[2])
@@ -34,7 +39,8 @@ model_file = sys.argv[1]
 print("Using model from file: {}".format(model_file))
 default_prior_shape = 'norm'
 print("The default prior shape is: {}".format(default_prior_shape))
-use_GR_converge = False
+use_GR_converge = True
+try_plot = True
 #print(model_file)
 model_module_name = model_file[:-3]
 #print(model_module_name)
@@ -139,14 +145,94 @@ for parameter in parameters:
         out_file.write("sampled_params_list.append({})\n".format(ps_name))
 
 if use_GR_converge:
-    pass
-else:
-    out_file.write("sampled_params, log_ps = run_dream(parameters=sampled_params_list, likelihood=likelihood, niterations=niterations, nchains=nchains, multitry=False, gamma_levels=4, adapt_gamma=True, history_thin=1, model_name=\'dreamzs_5chain\', verbose=True)\n")
+    out_file.write("converged = False\n")
+    out_file.write("sampled_params, log_ps = run_dream(parameters=sampled_params_list,\n")
+    out_file.write("                                   likelihood=likelihood,\n")
+    out_file.write("                                   niterations=niterations,\n")
+    out_file.write("                                   nchains=nchains,\n")
+    out_file.write("                                   multitry=False,\n")
+    out_file.write("                                   gamma_levels=4,\n")
+    out_file.write("                                   adapt_gamma=True,\n")
+    out_file.write("                                   history_thin=1,\n")
+    out_file.write("                                   model_name=\'dreamzs_5chain\',\n")
+    out_file.write("                                   verbose=True)\n")
     out_file.write("total_iterations = niterations\n")
     out_file.write("# Save sampling output (sampled parameter values and their corresponding logps).\n")
     out_file.write("for chain in range(len(sampled_params)):\n")
     out_file.write("    np.save(\'dreamzs_5chain_sampled_params_chain_\' + str(chain)+\'_\'+str(total_iterations), sampled_params[chain])\n")
     out_file.write("    np.save(\'dreamzs_5chain_logps_chain_\' + str(chain)+\'_\'+str(total_iterations), log_ps[chain])\n")
+    #Check convergence and continue sampling if not converged
+
+    out_file.write("GR = Gelman_Rubin(sampled_params)\n")
+    out_file.write("print('At iteration: ',total_iterations,' GR = ',GR)\n")
+    out_file.write("np.savetxt(\'dreamzs_5chain_GelmanRubin_iteration_\'+str(total_iterations)+\'.txt\', GR)\n")
+    out_file.write("old_samples = sampled_params\n")
+    out_file.write("if np.any(GR>1.2):\n")
+    out_file.write("    starts = [sampled_params[chain][-1, :] for chain in range(nchains)]\n")
+    out_file.write("    while not converged:\n")
+    out_file.write("        total_iterations += niterations\n")
+    out_file.write("        sampled_params, log_ps = run_dream(parameters=sampled_parameter_list,\n")
+    out_file.write("                                           likelihood=likelihood,\n")
+    out_file.write("                                           niterations=niterations,\n")
+    out_file.write("                                           nchains=nchains,\n")
+    out_file.write("                                           start=starts,\n")
+    out_file.write("                                           multitry=True,\n")
+    out_file.write("                                           gamma_levels=4,\n")
+    out_file.write("                                           adapt_gamma=True,\n")
+    out_file.write("                                           history_thin=1,\n")
+    out_file.write("                                           model_name=\'dreamzs_5chain\',\n")
+    out_file.write("                                           verbose=False,\n")
+    out_file.write("                                           restart=True)\n")
+
+
+            # Save sampling output (sampled parameter values and their corresponding logps).
+    out_file.write("        for chain in range(len(sampled_params)):\n")
+    out_file.write("            np.save('dreamzs_5chain_sampled_params_chain_' + str(chain)+'_'+str(total_iterations), sampled_params[chain])\n")
+    out_file.write("            np.save('dreamzs_5chain_logps_chain_' + str(chain)+'_'+str(total_iterations), log_ps[chain])\n")
+
+    out_file.write("        old_samples = [np.concatenate((old_samples[chain], sampled_params[chain])) for chain in range(nchains)]\n")
+    out_file.write("        GR = Gelman_Rubin(old_samples)\n")
+    out_file.write("        print(\'At iteration: \',total_iterations,\' GR = \',GR)\n")
+    out_file.write("        np.savetxt(\'dreamzs_5chain_GelmanRubin_iteration_\' + str(total_iterations)+\'.txt\', GR)\n")
+
+    out_file.write("        if np.all(GR<1.2):\n")
+    out_file.write("            converged = True\n")
+
+else:
+    out_file.write("sampled_params, log_ps = run_dream(parameters=sampled_params_list,\n")
+    out_file.write("                                   likelihood=likelihood,\n")
+    out_file.write("                                   niterations=niterations,\n")
+    out_file.write("                                   nchains=nchains, multitry=False,\n")
+    out_file.write("                                   gamma_levels=4, adapt_gamma=True,\n")
+    out_file.write("                                   history_thin=1,\n")
+    out_file.write("                                   model_name=\'dreamzs_5chain\',\n")
+    out_file.write("                                   verbose=True)\n")
+    out_file.write("total_iterations = niterations\n")
+    out_file.write("# Save sampling output (sampled parameter values and their corresponding logps).\n")
+    out_file.write("for chain in range(len(sampled_params)):\n")
+    out_file.write("    np.save(\'dreamzs_5chain_sampled_params_chain_\' + str(chain)+\'_\'+str(total_iterations), sampled_params[chain])\n")
+    out_file.write("    np.save(\'dreamzs_5chain_logps_chain_\' + str(chain)+\'_\'+str(total_iterations), log_ps[chain])\n")
+
+if try_plot:
+    out_file.write("try:\n")
+    out_file.write("    #Plot output\n")
+    out_file.write("    import seaborn as sns\n")
+    out_file.write("    from matplotlib import pyplot as plt\n")
+    out_file.write("    total_iterations = len(old_samples[0])\n")
+    out_file.write("    burnin = total_iterations/2\n")
+    out_file.write("    samples = np.concatenate((old_samples[0][burnin:, :], old_samples[1][burnin:, :],\n")
+    out_file.write("                              old_samples[2][burnin:, :], old_samples[3][burnin:, :],\n")
+    out_file.write("                              old_samples[4][burnin:, :]))\n")
+
+    out_file.write("    ndims = len(sampled_parameter_names)\n")
+    out_file.write("    colors = sns.color_palette(n_colors=ndims)\n")
+    out_file.write("    for dim in range(ndims):\n")
+    out_file.write("    fig = plt.figure()\n")
+    out_file.write("    sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)\n")
+    out_file.write("    fig.savefig('fig_PyDREAM_dimension_'+str(dim))\n")
+
+    out_file.write("except ImportError:\n")
+    out_file.write("    pass\n")
 
 out_file.close()
 print("pydream_it is complete!")
