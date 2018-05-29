@@ -7,7 +7,12 @@ def is_numbers(inputString):
 def parse_directive(directive, priors, no_sample):
     words = directive.split()
     if words[1] == 'prior':
-        priors[words[2]] = words[3]
+        if is_numbers(words[2]):
+            par_idx = int(words[2])
+            par = model.parameters[par_idx].name
+        else:
+            par = words[2]    
+        priors[par] = words[3]
     elif words[1] == 'no-sample':
         if is_numbers(words[2]):
             par_idx = int(words[2])
