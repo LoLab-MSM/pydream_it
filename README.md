@@ -24,13 +24,12 @@ The file model.py should be a PySB model file.
 *NOTE:* pydream_it currently doesn't inspect for the location of model.py, so you need to be in the same directory as the model.py file when you call pydream_it.
 In this case pydream_it will generate a file `run_pydream_model.py` which will contain some basic code to calibrate the model using PyDREAM.
 
-### pydream_it directives
-
-pydream_it currently has the following directives that can be added to the model code file:
-    * #PYDREAM_IT prior [param_name, param_index] [norm, uniform] - tell pydream_it to use a specific prior (other than the default) for the specified parameter. The parameter can be specified by either it name (param_name) or its index (param_index). pydream_it currently supports using normal distribution (norm) of uniform priors.
-    * #PYDREAM_IT no-sample [param_name, param_index] - define a fixed parameter, i.e., pydream_it will not add it to the sample parameters list for the PyDREAM run.
-
+#### pydream_it directives
 The #PYDREAM_IT directives will appear as comments in the model code and are parsed by pydream_it at runtime.
+pydream_it currently has the following directives that can be added to the model code file:
+* **#PYDREAM_IT prior [param_name, param_index] [norm, uniform]** - tell pydream_it to use a specific prior (other than the default) for the specified parameter. The parameter can be specified by either it name (param_name) or its index (param_index). pydream_it currently supports using normal distribution (norm) of uniform priors.
+* **#PYDREAM_IT no-sample [param_name, param_index]** - define a fixed parameter, i.e., pydream_it will not add it to the sample parameters list for the PyDREAM run.
+
 ------
 
 ## Contact
