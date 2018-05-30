@@ -6,7 +6,7 @@ from pydream.core import run_dream
 from pysb.simulator import ScipyOdeSimulator
 import numpy as np
 from pydream.parameters import SampledParam
-from scipy.stats import norm,uniform
+from pydream.convergence import Gelman_Rubinfrom scipy.stats import norm,uniform
 from toy_model import model
 
 # DREAM Settings
@@ -17,9 +17,9 @@ niterations = 50000
 
 #Initialize PySB solver object for running simulations.  Simulation timespan should match experimental data.
 tspan = np.linspace(0,10, num=100)
-solver = ScipyOdeSimulator(model, tspan)
+solver = ScipyOdeSimulator(model, tspan=tspan)
 parameters_idxs = [0, 1, 2, 3, 4]
-rates_mask = [i in parameters_idxs for i in range(len(model.parameters))]
+rates_mask = [True, True, True, True, True, False, False, False, False, False]
 param_values = np.array([p.value for p in model.parameters])
 
 # USER must add commands to import/load any experimental data for use in the likelihood function!
@@ -30,7 +30,7 @@ like_data = norm(loc=experiments_avg, scale=experiments_sd)
 def likelihood(position):
     Y=np.copy(position)
     param_values[rates_mask] = 10 ** Y
-    sim = solver.run(param_values).all
+    sim = solver.run(param_values=param_values).all
     logp_data = np.sum(like_data.logpdf(sim['observable']))
     return logp_data
 
@@ -102,8 +102,8 @@ try:
     ndims = len(sampled_parameter_names)
     colors = sns.color_palette(n_colors=ndims)
     for dim in range(ndims):
-    fig = plt.figure()
-    sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)
+        fig = plt.figure()
+        sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)
     fig.savefig('fig_PyDREAM_dimension_'+str(dim))
 except ImportError:
     pass
