@@ -232,8 +232,8 @@ if try_plot:
     out_file.write("    ndims = len(sampled_parameter_names)\n")
     out_file.write("    colors = sns.color_palette(n_colors=ndims)\n")
     out_file.write("    for dim in range(ndims):\n")
-    out_file.write("    fig = plt.figure()\n")
-    out_file.write("    sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)\n")
+    out_file.write("        fig = plt.figure()\n")
+    out_file.write("        sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)\n")
     out_file.write("    fig.savefig('fig_PyDREAM_dimension_'+str(dim))\n")
 
     out_file.write("except ImportError:\n")
