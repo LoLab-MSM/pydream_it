@@ -225,9 +225,7 @@ if try_plot:
     out_file.write("    from matplotlib import pyplot as plt\n")
     out_file.write("    total_iterations = len(old_samples[0])\n")
     out_file.write("    burnin = total_iterations/2\n")
-    out_file.write("    samples = np.concatenate((old_samples[0][burnin:, :], old_samples[1][burnin:, :],\n")
-    out_file.write("                              old_samples[2][burnin:, :], old_samples[3][burnin:, :],\n")
-    out_file.write("                              old_samples[4][burnin:, :]))\n")
+    out_file.write("    samples = np.concatenate(tuple([old_samples[i][burnin:, :] for i in range(nchains)]\n")
 
     out_file.write("    ndims = len(sampled_parameter_names)\n")
     out_file.write("    colors = sns.color_palette(n_colors=ndims)\n")
