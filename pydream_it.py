@@ -148,6 +148,8 @@ out_file.write("    Y=np.copy(position)\n")
 out_file.write("    param_values[rates_mask] = 10 ** Y\n")
 out_file.write("    sim = solver.run(param_values=param_values).all\n")
 out_file.write("    logp_data = np.sum(like_data.logpdf(sim['observable']))\n")
+out_file.write("    if np.isnan(logp_data):\n")
+out_file.write("        logp_data = -np.inf\n")
 out_file.write("    return logp_data\n")
 out_file.write("\n")
 #write the sampled params lines
