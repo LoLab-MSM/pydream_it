@@ -4,7 +4,7 @@ import importlib
 def is_numbers(inputString):
     return all(char.isdigit() for char in inputString)
 
-def parse_directive(directive, priors, no_sample):
+def parse_directive(directive, priors, no_sample, Keq_sample):
     words = directive.split()
     if words[1] == 'prior':
         if is_numbers(words[2]):
@@ -20,12 +20,29 @@ def parse_directive(directive, priors, no_sample):
         else:
             par = words[2]
         no_sample.append(par)
+    elif words[1] == 'sample_Keq':
+        if is_numbers(words[2]):
+            par_idx = int(words[2])
+            par_f = model.parameters[par_idx].name
+        if is_numbers(words[3]):
+            par_idx = int(words[3])
+            par_r = model.parameters[par_idx].name
+        if is_numbers(words[4]):
+            par_idx = int(words[4])
+            par_rep = model.parameters[par_idx].name
+        no_sample.append(par_rep)
+        Keq_sample.append((par_f, par_r, par_rep))
     return
 
 def prune_no_samples(parameters, no_sample):
     pruned_pars = [parameter for parameter in parameters if parameter[0].name not in no_sample]
 
     return pruned_pars
+
+def update_with_Keq_samples(parameters, Keq_sample):
+    k_reps = [sample[2] for sample in Keq_sample]
+    pruned_pars = [parameter for parameter in parameters if parameter[0].name not in k_reps]
+    return
 
 def write_norm_param(p_name, p_val):
     line = "sp_{} = SampledParam(norm, loc=np.log10({}), scale=2.0)\n".format(p_name, p_val)
@@ -49,6 +66,7 @@ model = getattr(model_module, 'model')
 #print(model)
 priors = dict()
 no_sample = list()
+Keq_sample = list()
 #Read the file and parse any #PYDREAM_IT directives
 print("Parsing the model for any #PYDREAM_IT directives...")
 with open(model_file, 'r') as file_obj:
@@ -74,6 +92,7 @@ for rule in model.rules:
 #print(parameters)
 #print(no_sample)
 parameters = prune_no_samples(parameters, no_sample)
+parameters = update_with_Keq_samples(parameters, Keq_sample)
 #print(parameters)
 print("Found the following kinetic parameters:")
 print("{}".format(parameters))

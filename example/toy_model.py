@@ -14,6 +14,7 @@ Monomer('S2', ['binding', 'state'], {'state': ['sub', 'pro']})
 # Product - common to both substrates
 Monomer('P')
 #Define the binding rules
+#PYDREAM_IT sample_Keq k_1 k_2 k_1
 Parameter('k_1', 0.002)
 Parameter('k_2', 0.001)
 Rule('binding_1', E(binding1=None) + S1(state='sub', binding=None) <> E(binding1=1) % S1(state='sub', binding=1), k_1, k_2)
