@@ -176,7 +176,7 @@ if use_GR_converge:
     out_file.write("    starts = [sampled_params[chain][-1, :] for chain in range(nchains)]\n")
     out_file.write("    while not converged:\n")
     out_file.write("        total_iterations += niterations\n")
-    out_file.write("        sampled_params, log_ps = run_dream(parameters=sampled_parameter_list,\n")
+    out_file.write("        sampled_params, log_ps = run_dream(parameters=sampled_params_list,\n")
     out_file.write("                                           likelihood=likelihood,\n")
     out_file.write("                                           niterations=niterations,\n")
     out_file.write("                                           nchains=nchains,\n")
