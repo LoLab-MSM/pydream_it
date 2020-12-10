@@ -17,11 +17,11 @@ Monomer('P')
 #PYDREAM_IT sample_Keq k_1 k_2 k_1
 Parameter('k_1', 0.002)
 Parameter('k_2', 0.001)
-Rule('binding_1', E(binding1=None) + S1(state='sub', binding=None) <> E(binding1=1) % S1(state='sub', binding=1), k_1, k_2)
+Rule('binding_1', E(binding1=None) + S1(state='sub', binding=None) | E(binding1=1) % S1(state='sub', binding=1), k_1, k_2)
 Parameter('k_4', 0.004)
 #PYDREAM_IT prior k_5 uniform
 Parameter('k_5', 0.001)
-Rule('binding_2', E(binding1=None) + S2(state='sub', binding=None) <> E(binding1=1) % S2(state='sub', binding=1), k_4, k_5)
+Rule('binding_2', E(binding1=None) + S2(state='sub', binding=None) | E(binding1=1) % S2(state='sub', binding=1), k_4, k_5)
 
 #Catalyze
 Parameter('k_3', 0.001)
