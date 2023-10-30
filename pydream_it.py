@@ -266,7 +266,7 @@ if __name__ == '__main__':
         out_file.write("                converged = True\n\n")
 
     if try_plot:
-        # Plot output
+        out_file.write("    # Plot output\n")
         out_file.write("    try:\n")
         out_file.write("        from pydream_it import plot_param_dist, plot_log_likelihood, plot_time_courses\n")
         out_file.write("\n")
