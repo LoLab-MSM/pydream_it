@@ -293,6 +293,7 @@ if __name__ == '__main__':
         out_file.write("            param_values[i][parameters_idxs] = 10 ** samples[i]\n")
         out_file.write("        output = solver.run(tspan=tspan, param_values=param_values)\n")
         out_file.write("        plot_time_courses(output, tspan, experiments_time, experiments_avg, experiments_sd)\n")
+        out_file.write("        print('DONE')\n")
         out_file.write("\n")
 
         out_file.write("    except ImportError:\n")
