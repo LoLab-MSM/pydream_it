@@ -71,14 +71,14 @@ def plot_log_likelihood(log_ps):
     plt.savefig('fig_PyDREAM_log_ps')
 
 
-def plot_time_courses(sim_output, sim_tspan, exp_time, exp_mean, exp_sdev):
+def plot_time_courses(sim_output, sim_tspan, exp_time, exp_mean, exp_sdev, fill_between=(0, 100)):
     plt.figure()
     for obs_name in exp_mean.dtype.names:
         # plot simulated data as a 95% envelope
         yvals = np.array([out[obs_name] for out in sim_output.all])
-        yvals_5 = np.percentile(yvals, 5, axis=0)
-        yvals_95 = np.percentile(yvals, 95, axis=0)
-        plt.fill_between(sim_tspan, yvals_5, yvals_95, alpha=0.5)  # , color='0.75')
+        yvals_min = np.percentile(yvals, fill_between[0], axis=0)
+        yvals_max = np.percentile(yvals, fill_between[1], axis=0)
+        plt.fill_between(sim_tspan, yvals_min, yvals_max, alpha=0.5)
         # plot experimental data
         plt.errorbar(exp_time, exp_mean[obs_name], yerr=exp_sdev[obs_name], capsize=6, fmt='o', ms=8, label=obs_name)
     plt.xlabel('time')
@@ -89,6 +89,11 @@ def plot_time_courses(sim_output, sim_tspan, exp_time, exp_mean, exp_sdev):
 
 
 if __name__ == '__main__':
+
+    # User settings
+    include_init_params = True
+    use_GR_converge = True
+    try_plot = True
 
     # Read input arguments
     model_file = sys.argv[1]
@@ -102,8 +107,6 @@ if __name__ == '__main__':
     print("Using model from file: {}".format(model_file))
     default_prior_shape = ('norm', 2.0)
     print("The default prior shape is: {}".format(default_prior_shape))
-    use_GR_converge = True
-    try_plot = True
     model_module_name = '.'.join([model_path.replace("/", "."), model_file[:-3]])
     model_module = importlib.import_module(model_module_name)
     model = getattr(model_module, 'model')
@@ -121,8 +124,10 @@ if __name__ == '__main__':
 
     # now we need to extract a list of kinetic parameters
     print("Inspecting the model and pulling out kinetic parameters...")
-    parameters = prune_no_samples(model.parameters_rules(), no_sample)
-    print("Found the following kinetic parameters:")
+    parameters = model.parameters if include_init_params else model.parameters_rules()
+    # remove parameters flagged with 'no-sample' in the model file
+    parameters = prune_no_samples(parameters, no_sample)
+    print("Found the following parameters:")
     print("{}".format(parameters))
     # default the priors to normal distributions (norm) with sdev = 2
     for p in parameters:
@@ -192,7 +197,8 @@ if __name__ == '__main__':
         value = p.value
         prior_shape = priors[name][0]
         scale = priors[name][1]
-        print("Will sample parameter {} with {} prior around {}".format(name, priors[name], value))
+        print("Will sample parameter {} with {} prior around log10({}) = {}".format(name, priors[name], value,
+                                                                                    np.log10(value)))
         if prior_shape == 'uniform':
             line = write_uniform_param(name, value, scale)
         else:
@@ -216,6 +222,7 @@ if __name__ == '__main__':
     out_file.write("                                       model_name=\'dreamzs_%dchain\' % nchains,\n")
     out_file.write("                                       verbose=True)\n")
     out_file.write("    total_iterations = niterations\n")
+    out_file.write("    burnin = int(total_iterations / 2)\n")
     out_file.write("    # Save sampling output (sampled parameter values and their corresponding logps).\n")
     out_file.write("    for chain in range(len(sampled_params)):\n")
     out_file.write("        np.save(\'dreamzs_%dchain_sampled_params_chain_%d_%d\' %\n" +
@@ -235,17 +242,18 @@ if __name__ == '__main__':
         out_file.write("        converged = False\n")
         out_file.write("        while not converged:\n")
         out_file.write("            total_iterations += niterations\n")
+        out_file.write("            burnin += niterations\n")
         out_file.write("            sampled_params, log_ps = run_dream(parameters=sampled_params_list,\n")
         out_file.write("                                               likelihood=likelihood,\n")
         out_file.write("                                               niterations=niterations,\n")
         out_file.write("                                               nchains=nchains,\n")
         out_file.write("                                               start=starts,\n")
-        out_file.write("                                               multitry=True,\n")
+        out_file.write("                                               multitry=False,\n")
         out_file.write("                                               gamma_levels=4,\n")
         out_file.write("                                               adapt_gamma=True,\n")
         out_file.write("                                               history_thin=1,\n")
         out_file.write("                                               model_name=\'dreamzs_%dchain\' % nchains,\n")
-        out_file.write("                                               verbose=False,\n")
+        out_file.write("                                               verbose=True,\n")
         out_file.write("                                               restart=True)\n")
 
         # Save sampling output (sampled parameter values and their corresponding logps)
@@ -271,7 +279,6 @@ if __name__ == '__main__':
         out_file.write("        from pydream_it import plot_param_dist, plot_log_likelihood, plot_time_courses\n")
         out_file.write("\n")
         out_file.write("        total_iterations = len(old_samples[0])\n")
-        out_file.write("        burnin = int(total_iterations / 2)\n")
         out_file.write("        # parameter distributions\n")
         out_file.write("        print('Plotting parameter distributions')\n")
         out_file.write("        samples = np.concatenate(tuple([old_samples[i][burnin:, :] " +
@@ -281,16 +288,21 @@ if __name__ == '__main__':
         out_file.write("        print('Plotting log-likelihoods')\n")
         out_file.write("        log_ps = []\n")
         out_file.write("        for chain in range(nchains):\n")
-        out_file.write("            log_ps.append(np.load('dreamzs_%dchain_logps_chain_%d_%d.npy' % " +
-                       "(nchains, chain, total_iterations)))\n")
+        out_file.write("            n_files = int(total_iterations / niterations)\n")
+        out_file.write("            log_ps.append(np.concatenate(\n")
+        out_file.write("                tuple(np.load('dreamzs_%dchain_logps_chain_%d_%d.npy' % " +
+                       "(nchains, chain, niterations * (i+1)))\n")
+        out_file.write("                      for i in range(n_files))))\n")
         out_file.write("        plot_log_likelihood(log_ps)\n")
         out_file.write("        # time courses\n")
-        out_file.write("        print('Plotting time courses')\n")
         out_file.write("        tspan = np.linspace(experiments_time[0], experiments_time[-1], " +
                        "len(experiments_time) * 10 + 1)\n")
-        out_file.write("        param_values = np.array([param_values] * len(samples))\n")
+        out_file.write("        # only run sims for unique parameter sets\n")
+        out_file.write("        samples_unique, counts = np.unique(samples, return_counts=True, axis=0)\n")
+        out_file.write("        print('Plotting %d time courses' % len(samples_unique))\n")
+        out_file.write("        param_values = np.array([param_values] * len(samples_unique))\n")
         out_file.write("        for i in range(len(param_values)):\n")
-        out_file.write("            param_values[i][parameters_idxs] = 10 ** samples[i]\n")
+        out_file.write("            param_values[i][parameters_idxs] = 10 ** samples_unique[i]\n")
         out_file.write("        output = solver.run(tspan=tspan, param_values=param_values)\n")
         out_file.write("        plot_time_courses(output, tspan, experiments_time, experiments_avg, experiments_sd)\n")
         out_file.write("        print('DONE')\n")
@@ -300,8 +312,8 @@ if __name__ == '__main__':
         out_file.write("        pass\n")
 
     out_file.write("\nelse:\n")
-    out_file.write("    run_kwargs = {'parameters': sampled_params_list, 'likelihood': likelihood, " +
-                   "'niterations': niterations,\n " +
+    out_file.write("    run_kwargs = {" +
+                   "'parameters': sampled_params_list, 'likelihood': likelihood, 'niterations': niterations,\n " +
                    "                 'nchains': nchains, 'multitry': False, 'gamma_levels': 4, " +
                    "'adapt_gamma': True, 'history_thin': 1,\n " +
                    "                 'model_name': 'dreamzs_%dchain' % nchains, 'verbose': True}\n")
