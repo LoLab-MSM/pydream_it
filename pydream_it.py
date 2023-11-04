@@ -57,15 +57,20 @@ def plot_param_dist(samples, labels):
 def plot_log_likelihood(log_ps):
     plt.figure()
     nchains = len(log_ps)
-    maximums = []
+    cutoff = int(len(log_ps[0]) / 2)  # calculate mean and variance for last half of steps
+    log_ps_max = -np.inf
+    log_ps_mean = 0
+    log_ps_var = 0
     for chain in range(nchains):
-        maximums.append(log_ps[chain].max())
         plt.plot(range(len(log_ps[chain])), log_ps[chain], label='chain %d' % chain)
+        log_ps_max = np.max(log_ps[chain]) if log_ps_max < np.max(log_ps[chain]) else log_ps_max
+        log_ps_mean += np.mean(log_ps[chain][cutoff:]) / nchains
+        log_ps_var += np.var(log_ps[chain][cutoff:]) / nchains  # this is the mean of the variances, but that's fine
+    top = np.ceil(log_ps_max)
+    bottom = np.floor(log_ps_mean - 3 * log_ps_var)
+    plt.ylim(bottom=bottom, top=top)
     plt.xlabel('iteration')
     plt.ylabel('log-likelihood')
-    top = np.ceil(np.max(maximums))
-    bottom = 0.9 * top if top > 0 else 1.1 * top
-    plt.ylim(bottom=bottom, top=top)
     plt.legend(loc=0)
     plt.tight_layout()
     plt.savefig('fig_PyDREAM_log_ps')
@@ -92,6 +97,7 @@ if __name__ == '__main__':
 
     # User settings
     include_init_params = True
+    default_prior_shape = ('norm', 2.0)
     use_GR_converge = True
     try_plot = True
 
@@ -105,7 +111,6 @@ if __name__ == '__main__':
     exp_data_time = "%s_exp_data_time.csv" % model_file[:-3]
 
     print("Using model from file: {}".format(model_file))
-    default_prior_shape = ('norm', 2.0)
     print("The default prior shape is: {}".format(default_prior_shape))
     model_module_name = '.'.join([model_path.replace("/", "."), model_file[:-3]])
     model_module = importlib.import_module(model_module_name)
