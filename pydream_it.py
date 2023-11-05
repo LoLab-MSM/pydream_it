@@ -35,12 +35,14 @@ def prune_no_samples(parameters, no_sample):
 
 
 def write_norm_param(p_name, p_val, p_scale):
-    line = "sp_{} = SampledParam(norm, loc=np.log10({}), scale={})\n".format(p_name, p_val, p_scale)
+    line = "sampled_params_list.append(SampledParam(norm, loc=np.log10({}), scale={}))  # {}\n".\
+        format(p_val, p_scale, p_name)
     return line
 
 
 def write_uniform_param(p_name, p_val, p_scale):
-    line = "sp_{} = SampledParam(uniform, loc=np.log10({})-{}, scale={})\n".format(p_name, p_val, 0.5*p_scale, p_scale)
+    line = "sampled_params_list.append(SampledParam(uniform, loc=np.log10({})-{}, scale={}))  # {}\n".\
+        format(p_val, 0.5*p_scale, p_scale, p_name)
     return line
 
 
@@ -208,9 +210,7 @@ if __name__ == '__main__':
             line = write_uniform_param(name, value, scale)
         else:
             line = write_norm_param(name, value, scale)
-        ps_name = line.split()[0]
         out_file.write(line)
-        out_file.write("sampled_params_list.append({})\n".format(ps_name))
 
     # write the main part of the script
     out_file.write("\n")

@@ -51,6 +51,9 @@ Rule('BB_to_BC', B() + B() >> B() + C(), Parameter('k2', 3.0e7))
 Rule('BC_to_AC', B() + C() >> A() + C(), Parameter('k3', 1.0e4))
 
 # The system is known to be stiff for initial values A=1, B=0, C=0
+#PYDREAM_IT no-sample A_0
+#PYDREAM_IT no-sample B_0
+#PYDREAM_IT no-sample C_0
 Initial(A(), Parameter('A_0', 1.0))
 Initial(B(), Parameter('B_0', 0.0))
 Initial(C(), Parameter('C_0', 0.0))
