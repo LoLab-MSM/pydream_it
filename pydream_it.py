@@ -68,7 +68,6 @@ def plot_log_likelihood(log_ps):
         log_ps_max = np.max(log_ps[chain]) if log_ps_max < np.max(log_ps[chain]) else log_ps_max
         log_ps_mean += np.mean(log_ps[chain][cutoff:]) / nchains
         log_ps_var += np.var(log_ps[chain][cutoff:]) / nchains  # this is the mean of the variances, but that's fine
-    # top = np.ceil(log_ps_max)
     top = np.ceil(log_ps_mean + 5 * np.sqrt(log_ps_var))
     bottom = np.floor(log_ps_mean - 20 * np.sqrt(log_ps_var))
     print('max: %g, mean: %g, sdev: %g, top: %g, bottom: %g' %
