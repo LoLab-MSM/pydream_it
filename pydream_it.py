@@ -69,7 +69,9 @@ def plot_log_likelihood(log_ps):
         log_ps_mean += np.mean(log_ps[chain][cutoff:]) / nchains
         log_ps_var += np.var(log_ps[chain][cutoff:]) / nchains  # this is the mean of the variances, but that's fine
     top = np.ceil(log_ps_max)
-    bottom = np.floor(log_ps_mean - 3 * log_ps_var)
+    bottom = np.floor(log_ps_mean - 20 * np.sqrt(log_ps_var))
+    print('max: %g, mean: %g, sdev: %g, top: %g, bottom: %g' %
+          (log_ps_max, log_ps_mean, np.sqrt(log_ps_var), top, bottom))
     plt.ylim(bottom=bottom, top=top)
     plt.xlabel('iteration')
     plt.ylabel('log-likelihood')
@@ -160,7 +162,7 @@ if __name__ == '__main__':
     out_file.write("from pydream.parameters import SampledParam\n")
     out_file.write("from pydream.convergence import Gelman_Rubin\n")
     out_file.write("from scipy.stats import norm, uniform\n")
-    out_file.write("from " + model_module_name + " import model\n")
+    out_file.write("from %s import model\n" % model_file[:-3])
     out_file.write("\n")
     out_file.write("# DREAM Settings\n")
     out_file.write("# Number of chains - should be at least 3.\n")
