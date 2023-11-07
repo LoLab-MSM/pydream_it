@@ -92,6 +92,7 @@ def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=
     # if applicable, use 'counts' to generate full set of simulation outputs for correct weighting for plots
     if counts is not None:
         output = np.repeat(output, counts, axis=0)
+    # make plots
     for obs_name in observables:
         # plot simulated data as a percent envelope
         yvals = np.array([out[obs_name] for out in output])
@@ -112,18 +113,19 @@ def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=
     plt.savefig('fig_PyDREAM_time_courses')
 
 
-def get_unique_samples_for_simulation(samples, log_ps, cutoff):
+def get_unique_samples_for_simulation(samples, log_ps, cutoff=None):
     # only run simulations for unique parameter sets
     samples, idx_unique, counts = np.unique(samples, return_index=True, return_counts=True, axis=0)
     # prune parameter sets based on log_ps
-    avg = np.mean(log_ps)
-    sdev = np.sqrt(np.var(log_ps))
-    print('log_ps: avg = %g, sdev = %g, avg-%d*sdev = %g' % (avg, sdev, cutoff, avg-cutoff*sdev))
-    # remove parameter sets that have a log_p less than 'cutoff' sdevs below the mean
-    idx_remove = [i for i in range(len(log_ps[idx_unique])) if log_ps[idx_unique][i] < (avg - cutoff * sdev)]
-    if len(idx_remove) > 0:
-        samples = np.delete(samples, idx_remove, axis=0)
-        counts = np.delete(counts, idx_remove, axis=0)
+    if cutoff is not None:
+        avg = np.mean(log_ps)
+        sdev = np.sqrt(np.var(log_ps))
+        print('log_ps: avg = %g, sdev = %g, avg-%d*sdev = %g' % (avg, sdev, cutoff, avg-cutoff*sdev))
+        # remove parameter sets that have a log_p less than 'cutoff' sdevs below the mean
+        idx_remove = [i for i in range(len(log_ps[idx_unique])) if log_ps[idx_unique][i] < (avg - cutoff * sdev)]
+        if len(idx_remove) > 0:
+            samples = np.delete(samples, idx_remove, axis=0)
+            counts = np.delete(counts, idx_remove, axis=0)
     return samples, counts
 
 
