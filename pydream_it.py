@@ -80,21 +80,51 @@ def plot_log_likelihood(log_ps):
     plt.savefig('fig_PyDREAM_log_ps')
 
 
-def plot_time_courses(sim_output, sim_tspan, exp_time, exp_mean, exp_sdev, fill_between=(0, 100)):
+def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=None, fill_between=(5, 95)):
     plt.figure()
-    for obs_name in exp_mean.dtype.names:
-        # plot simulated data as a 95% envelope
-        yvals = np.array([out[obs_name] for out in sim_output.all])
+    output = np.copy(sim_output)
+    # remove any simulations that produced NaNs
+    idx_remove = [i for i in range(len(output)) if np.any(np.isnan(output[i][observables[0]]))]
+    if len(idx_remove) > 0:
+        output = np.delete(output, idx_remove, axis=0)
+        if counts is not None:
+            counts = np.delete(counts, idx_remove, axis=0)
+    # if applicable, use 'counts' to generate full set of simulation outputs for correct weighting for plots
+    if counts is not None:
+        output = np.repeat(output, counts, axis=0)
+    for obs_name in observables:
+        # plot simulated data as a percent envelope
+        yvals = np.array([out[obs_name] for out in output])
         yvals_min = np.percentile(yvals, fill_between[0], axis=0)
         yvals_max = np.percentile(yvals, fill_between[1], axis=0)
         plt.fill_between(sim_tspan, yvals_min, yvals_max, alpha=0.5)
         # plot experimental data
-        plt.errorbar(exp_time, exp_mean[obs_name], yerr=exp_sdev[obs_name], capsize=6, fmt='o', ms=8, label=obs_name)
+        if exp_data is not None:
+            exp_time = exp_data[0]
+            exp_mean = exp_data[1]
+            exp_sdev = exp_data[2]
+            plt.errorbar(exp_time, exp_mean[obs_name], yerr=exp_sdev[obs_name],
+                         capsize=6, fmt='o', ms=8, label=obs_name)
     plt.xlabel('time')
     plt.ylabel('concentration')
     plt.legend(loc=0)
     plt.tight_layout()
     plt.savefig('fig_PyDREAM_time_courses')
+
+
+def get_unique_samples_for_simulation(samples, log_ps, cutoff):
+    # only run simulations for unique parameter sets
+    samples, idx_unique, counts = np.unique(samples, return_index=True, return_counts=True, axis=0)
+    # prune parameter sets based on log_ps
+    avg = np.mean(log_ps)
+    sdev = np.sqrt(np.var(log_ps))
+    print('log_ps: avg = %g, sdev = %g, avg-%d*sdev = %g' % (avg, sdev, cutoff, avg-cutoff*sdev))
+    # remove parameter sets that have a log_p less than 'cutoff' sdevs below the mean
+    idx_remove = [i for i in range(len(log_ps[idx_unique])) if log_ps[idx_unique][i] < (avg - cutoff * sdev)]
+    if len(idx_remove) > 0:
+        samples = np.delete(samples, idx_remove, axis=0)
+        counts = np.delete(counts, idx_remove, axis=0)
+    return samples, counts
 
 
 if __name__ == '__main__':
@@ -283,7 +313,8 @@ if __name__ == '__main__':
     if try_plot:
         out_file.write("    # Plot output\n")
         out_file.write("    try:\n")
-        out_file.write("        from pydream_it import plot_param_dist, plot_log_likelihood, plot_time_courses\n")
+        out_file.write("        from pydream_it import plot_param_dist, plot_log_likelihood, plot_time_courses, \\\n")
+        out_file.write("            get_unique_samples_for_simulation\n")
         out_file.write("\n")
         out_file.write("        total_iterations = len(old_samples[0])\n")
         out_file.write("        # parameter distributions\n")
@@ -298,23 +329,24 @@ if __name__ == '__main__':
         out_file.write("            n_files = int(total_iterations / niterations)\n")
         out_file.write("            log_ps.append(np.concatenate(\n")
         out_file.write("                tuple(np.load('dreamzs_%dchain_logps_chain_%d_%d.npy' % " +
-                       "(nchains, chain, niterations * (i+1)))\n")
+                       "(nchains, chain, niterations * (i+1))).flatten()\n")
         out_file.write("                      for i in range(n_files))))\n")
         out_file.write("        plot_log_likelihood(log_ps)\n")
         out_file.write("        # time courses\n")
         out_file.write("        tspan = np.linspace(experiments_time[0], experiments_time[-1], " +
                        "len(experiments_time) * 10 + 1)\n")
-        out_file.write("        # only run sims for unique parameter sets\n")
-        out_file.write("        samples_unique, counts = np.unique(samples, return_counts=True, axis=0)\n")
-        out_file.write("        print('Plotting %d time courses' % len(samples_unique))\n")
-        out_file.write("        param_values = np.array([param_values] * len(samples_unique))\n")
+
+        out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][burnin:] for i in range(nchains)]))\n")
+        out_file.write("        # only run sims for unique parameter sets with a log_p within a cutoff of the mean\n")
+        out_file.write("        samples, counts = get_unique_samples_for_simulation(samples, log_ps, cutoff=2)\n")
+        out_file.write("        param_values = np.array([param_values] * len(samples))\n")
         out_file.write("        for i in range(len(param_values)):\n")
-        out_file.write("            param_values[i][parameters_idxs] = 10 ** samples_unique[i]\n")
-        out_file.write("        output = solver.run(tspan=tspan, param_values=param_values)\n")
-        out_file.write("        plot_time_courses(output, tspan, experiments_time, experiments_avg, experiments_sd)\n")
+        out_file.write("            param_values[i][parameters_idxs] = 10 ** samples[i]\n")
+        out_file.write("        output_all = solver.run(tspan=tspan, param_values=param_values).all\n")
+        out_file.write("        plot_time_courses(experiments_avg.dtype.names, tspan, output_all, counts=counts,\n")
+        out_file.write("                          exp_data=(experiments_time, experiments_avg, experiments_sd))\n")
         out_file.write("        print('DONE')\n")
         out_file.write("\n")
-
         out_file.write("    except ImportError:\n")
         out_file.write("        pass\n")
 
