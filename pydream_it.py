@@ -143,7 +143,7 @@ if __name__ == '__main__':
     model_path = os.path.split(model_file)[0]
     model_file = os.path.split(model_file)[1]
     exp_data_avg = "%s_exp_data_avg.csv" % model_file[:-3]
-    exp_data_sd = "%s_exp_data_sd.csv" % model_file[:-3]
+    exp_data_se = "%s_exp_data_se.csv" % model_file[:-3]
     exp_data_time = "%s_exp_data_time.csv" % model_file[:-3]
 
     print("Using model from file: {}".format(model_file))
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     out_file.write("# USER must add commands to import/load any experimental data for use in the likelihood " +
                    "function!\n")
     out_file.write("experiments_avg = np.genfromtxt(\"%s\", delimiter=',', names=True)\n" % exp_data_avg)
-    out_file.write("experiments_sd = np.genfromtxt(\"%s\", delimiter=',', names=True)\n" % exp_data_sd)
+    out_file.write("experiments_se = np.genfromtxt(\"%s\", delimiter=',', names=True)\n" % exp_data_se)
     out_file.write("like_data = {}\n")
     out_file.write("for sp in experiments_avg.dtype.names:\n")
     out_file.write("    like_data[sp] = norm(loc=experiments_avg[sp], scale=experiments_sd[sp])\n")
