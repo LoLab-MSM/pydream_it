@@ -46,14 +46,41 @@ def write_uniform_param(p_name, p_val, p_scale):
     return line
 
 
-def plot_param_dist(samples, labels):
-    ndims = len(samples[0])
+def plot_param_dist(samples, labels, ncols=None, figsize=(6.4, 4.8)):
+    # error check
+    if len(samples[0]) != len(labels):
+        print("Error: 'ndims' (%d) and 'labels' (%d) are not the same length. Please try again." %
+              (len(samples[0]), len(labels)))
+        quit()
+    ndims = len(labels)
     colors = sns.color_palette(n_colors=ndims)
+    if ncols is None:
+        ncols = int(np.ceil(np.sqrt(ndims)))
+    nrows = int(np.ceil(ndims/ncols))
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True, sharey=False, constrained_layout=True,
+                            figsize=figsize)
+    row = 0
+    col = 0
     for dim in range(ndims):
-        plt.figure()
-        sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True)
-        plt.xlabel(r'log$_{10}$ %s' % labels[dim])
-        plt.savefig('fig_PyDREAM_dimension_%d' % dim)
+        print(dim, end=' ')
+        p = sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True, ax=axs[row][col])
+        p.set(yticklabels=[])
+        p.set(ylabel=None)
+        p.set(title=labels[dim])
+        axs[row][col].tick_params(axis='x', labelsize=16)
+        col += 1
+        if col % ncols == 0:
+            col = 0
+            row += 1
+    print()
+    fig.supxlabel(r'log$_{10}$ value', fontsize=24)
+    fig.supylabel('Density', fontsize=24)
+    # delete exta plots
+    while col < ncols:
+        fig.delaxes(axs[row][col])
+        col += 1
+    # save plots
+    plt.savefig('fig_PyDREAM_histograms')
 
 
 def plot_log_likelihood(log_ps):
@@ -116,7 +143,8 @@ def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=
 def get_unique_samples_for_simulation(samples, log_ps, cutoff=None):
     # error check
     if len(samples) != len(log_ps):
-        print("Error: 'samples' (%d) and 'log_ps' (%d) are not the same length. Please try again.")
+        print("Error: 'samples' (%d) and 'log_ps' (%d) are not the same length. Please try again." %
+              (len(samples), len(log_ps)))
         quit()
     # only run simulations for unique parameter sets
     samples, idx_unique, counts = np.unique(samples, return_index=True, return_counts=True, axis=0)
