@@ -114,6 +114,10 @@ def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=
 
 
 def get_unique_samples_for_simulation(samples, log_ps, cutoff=None):
+    # error check
+    if len(samples) != len(log_ps):
+        print("Error: 'samples' (%d) and 'log_ps' (%d) are not the same length. Please try again.")
+        quit()
     # only run simulations for unique parameter sets
     samples, idx_unique, counts = np.unique(samples, return_index=True, return_counts=True, axis=0)
     # prune parameter sets based on log_ps
@@ -327,8 +331,8 @@ if __name__ == '__main__':
         out_file.write("        # log likelihood\n")
         out_file.write("        print('Plotting log-likelihoods')\n")
         out_file.write("        log_ps = []\n")
+        out_file.write("        n_files = int(total_iterations / niterations)\n")
         out_file.write("        for chain in range(nchains):\n")
-        out_file.write("            n_files = int(total_iterations / niterations)\n")
         out_file.write("            log_ps.append(np.concatenate(\n")
         out_file.write("                tuple(np.load('dreamzs_%dchain_logps_chain_%d_%d.npy' % " +
                        "(nchains, chain, niterations * (i+1))).flatten()\n")
@@ -338,12 +342,14 @@ if __name__ == '__main__':
         out_file.write("        tspan = np.linspace(experiments_time[0], experiments_time[-1], " +
                        "len(experiments_time) * 10 + 1)\n")
 
-        out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][burnin:] for i in range(nchains)]))\n")
         out_file.write("        # only run sims for unique parameter sets with a log_p within a cutoff of the mean\n")
+        out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][burnin + niterations * (n_files-1):] " +
+                       "for i in range(nchains)]))\n")
         out_file.write("        samples, counts = get_unique_samples_for_simulation(samples, log_ps, cutoff=2)\n")
         out_file.write("        param_values = np.array([param_values] * len(samples))\n")
         out_file.write("        for i in range(len(param_values)):\n")
         out_file.write("            param_values[i][parameters_idxs] = 10 ** samples[i]\n")
+        out_file.write("        print('Running and plotting %d simulations' % len(param_values))")
         out_file.write("        output_all = solver.run(tspan=tspan, param_values=param_values).all\n")
         out_file.write("        plot_time_courses(experiments_avg.dtype.names, tspan, output_all, counts=counts,\n")
         out_file.write("                          exp_data=(experiments_time, experiments_avg, experiments_sd))\n")
