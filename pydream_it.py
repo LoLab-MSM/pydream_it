@@ -174,9 +174,9 @@ if __name__ == '__main__':
 
     model_path = os.path.split(model_file)[0]
     model_file = os.path.split(model_file)[1]
-    exp_data_avg = "%s_exp_data_avg.csv" % model_file[:-3]
-    exp_data_se = "%s_exp_data_se.csv" % model_file[:-3]
-    exp_data_time = "%s_exp_data_time.csv" % model_file[:-3]
+    exp_data_avg = "%s_exp_data_avg_0.csv" % model_file[:-3]
+    exp_data_se = "%s_exp_data_se_0.csv" % model_file[:-3]
+    exp_data_time = "%s_exp_data_time_0.csv" % model_file[:-3]
 
     print("Using model from file: {}".format(model_file))
     print("The default prior shape is: {}".format(default_prior_shape))
@@ -234,10 +234,21 @@ if __name__ == '__main__':
     out_file.write("# Number of iterations\n")
     out_file.write("niterations = 50000\n")
     out_file.write("\n")
-    out_file.write("# Initialize PySB solver object for running simulations.  " +
-                   "Simulation timespan should match experimental data.\n")
-    out_file.write("experiments_time = np.genfromtxt(\"%s\", names=True)['time']\n" % exp_data_time)
-    out_file.write("solver = ScipyOdeSimulator(model, tspan=experiments_time)\n")
+    out_file.write("# Initialize PySB solver object for running simulations. Simulation timespan should match " +
+                   "experimental data.\n")
+    out_file.write("experiments_time = np.genfromtxt(\"%s\", delimiter=',', names=True)\n" % exp_data_time)
+    out_file.write("tspan = []\n")
+    out_file.write("for name in experiments_time.dtype.names:\n")
+    out_file.write("    exp_time = [t for t in experiments_time[name] if not np.isnan(t)]\n")
+    out_file.write("    tspan += exp_time\n")
+    out_file.write("tspan = sorted(list(set(tspan)))  # get a common set of time points for simulations\n")
+    out_file.write("tspan_mask = {}  # for each species, need to mark which time points we have data for\n")
+    out_file.write("for name in experiments_time.dtype.names:\n")
+    out_file.write("    tspan_mask[name] = [False] * len(tspan)\n")
+    out_file.write("    for i in range(len(tspan)):\n")
+    out_file.write("        if tspan[i] in experiments_time[name]:\n")
+    out_file.write("            tspan_mask[name][i] = True\n")
+    out_file.write("solver = ScipyOdeSimulator(model, tspan=tspan)\n")
     out_file.write("parameters_idxs = " + str(parameters_idxs)+"\n")
     out_file.write("rates_mask = " + str(rates_mask)+"\n")
     out_file.write("param_values = np.array([p.value for p in model.parameters])\n")
@@ -247,8 +258,11 @@ if __name__ == '__main__':
     out_file.write("experiments_avg = np.genfromtxt(\"%s\", delimiter=',', names=True)\n" % exp_data_avg)
     out_file.write("experiments_se = np.genfromtxt(\"%s\", delimiter=',', names=True)\n" % exp_data_se)
     out_file.write("like_data = {}\n")
-    out_file.write("for sp in experiments_avg.dtype.names:\n")
-    out_file.write("    like_data[sp] = norm(loc=experiments_avg[sp], scale=experiments_sd[sp])\n")
+    out_file.write("for name in experiments_avg.dtype.names:\n")
+    out_file.write("    # remove any nans, which will happen if the time points are different for different species\n")
+    out_file.write("    exp_avg = [avg for avg in experiments_avg[name] if not np.isnan(avg)]\n")
+    out_file.write("    exp_se = [se for se in experiments_se[name] if not np.isnan(se)]\n")
+    out_file.write("    like_data[name] = norm(loc=exp_avg, scale=exp_se)\n")
     out_file.write("\n\n")
     out_file.write("# USER must define a likelihood function!\n")
     out_file.write("def likelihood(position):\n")
@@ -257,7 +271,7 @@ if __name__ == '__main__':
     out_file.write("    sim = solver.run(param_values=param_values).all\n")
     out_file.write("    logp_data = 0\n")
     out_file.write("    for sp in like_data.keys():\n")
-    out_file.write("        logp_data += np.sum(like_data[sp].logpdf(sim[sp]))\n")
+    out_file.write("        logp_data += np.sum(like_data[sp].logpdf(sim[sp][tspan_mask[sp]]))\n")
     out_file.write("    if np.isnan(logp_data):\n")
     out_file.write("        logp_data = -np.inf\n")
     out_file.write("    return logp_data\n")
@@ -377,10 +391,10 @@ if __name__ == '__main__':
         out_file.write("        param_values = np.array([param_values] * len(samples))\n")
         out_file.write("        for i in range(len(param_values)):\n")
         out_file.write("            param_values[i][parameters_idxs] = 10 ** samples[i]\n")
-        out_file.write("        print('Running and plotting %d simulations' % len(param_values))")
+        out_file.write("        print('Running and plotting %d simulations' % len(param_values))\n")
         out_file.write("        output_all = solver.run(tspan=tspan, param_values=param_values).all\n")
         out_file.write("        plot_time_courses(experiments_avg.dtype.names, tspan, output_all, counts=counts,\n")
-        out_file.write("                          exp_data=(experiments_time, experiments_avg, experiments_sd))\n")
+        out_file.write("                          exp_data=(experiments_time, experiments_avg, experiments_se))\n")
         out_file.write("        print('DONE')\n")
         out_file.write("\n")
         out_file.write("    except ImportError:\n")
