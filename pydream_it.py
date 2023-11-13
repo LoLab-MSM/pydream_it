@@ -56,8 +56,8 @@ def plot_param_dist(samples, labels, **kwargs):
     # set plot parameters
     fscale = np.ceil(ndims / 16)
     figsize = kwargs.get('figsize', fscale * np.array([6.4, 4.8]))
-    labelsize = kwargs.get('labelsize', 10 * (2/5 * fscale))
-    fontsize = kwargs.get('fontsize', 10 * (3/5 * fscale))
+    labelsize = kwargs.get('labelsize', 10 * max(1, (2/5 * fscale)))
+    fontsize = kwargs.get('fontsize', 10 * max(1, (3/5 * fscale)))
     ncols = kwargs.get('ncols', int(np.ceil(np.sqrt(ndims))))
     nrows = int(np.ceil(ndims/ncols))
     # create figure
