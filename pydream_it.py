@@ -46,39 +46,45 @@ def write_uniform_param(p_name, p_val, p_scale):
     return line
 
 
-def plot_param_dist(samples, labels, ncols=None, figsize=(6.4, 4.8)):
+def plot_param_dist(samples, labels, **kwargs):
     # error check
     if len(samples[0]) != len(labels):
         print("Error: 'ndims' (%d) and 'labels' (%d) are not the same length. Please try again." %
               (len(samples[0]), len(labels)))
         quit()
     ndims = len(labels)
-    colors = sns.color_palette(n_colors=ndims)
-    if ncols is None:
-        ncols = int(np.ceil(np.sqrt(ndims)))
+    # set plot parameters
+    fscale = np.ceil(ndims / 16)
+    figsize = kwargs.get('figsize', fscale * np.array([6.4, 4.8]))
+    labelsize = kwargs.get('labelsize', 10 * (2/5 * fscale))
+    fontsize = kwargs.get('fontsize', 10 * (3/5 * fscale))
+    ncols = kwargs.get('ncols', int(np.ceil(np.sqrt(ndims))))
     nrows = int(np.ceil(ndims/ncols))
+    # create figure
+    colors = sns.color_palette(n_colors=ndims)
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, sharex=True, sharey=False, constrained_layout=True,
                             figsize=figsize)
     row = 0
     col = 0
     for dim in range(ndims):
         print(dim, end=' ')
-        p = sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True, ax=axs[row][col])
-        p.set(yticklabels=[])
-        p.set(ylabel=None)
-        p.set(title=labels[dim])
-        axs[row][col].tick_params(axis='x', labelsize=16)
+        sns.distplot(samples[:, dim], color=colors[dim], norm_hist=True, ax=axs[row][col])
+        axs[row][col].set_yticklabels([])
+        axs[row][col].set_ylabel(None)
+        axs[row][col].set_title(labels[dim], fontsize=labelsize)
+        axs[row][col].tick_params(axis='x', labelsize=labelsize)
         col += 1
         if col % ncols == 0:
             col = 0
             row += 1
     print()
-    fig.supxlabel(r'log$_{10}$ value', fontsize=24)
-    fig.supylabel('Density', fontsize=24)
+    fig.supxlabel(r'log$_{10}$ value', fontsize=fontsize)
+    fig.supylabel('Density', fontsize=fontsize)
     # delete exta plots
-    while col < ncols:
-        fig.delaxes(axs[row][col])
-        col += 1
+    if col > 0:
+        while col < ncols:
+            fig.delaxes(axs[row][col])
+            col += 1
     # save plots
     plt.savefig('fig_PyDREAM_histograms')
 
@@ -367,8 +373,8 @@ if __name__ == '__main__':
         out_file.write("        total_iterations = len(old_samples[0])\n")
         out_file.write("        # parameter distributions\n")
         out_file.write("        print('Plotting parameter distributions')\n")
-        out_file.write("        samples = np.concatenate(tuple([old_samples[i][burnin:, :] " +
-                       "for i in range(nchains)]))\n")
+        out_file.write("        samples = np.concatenate(tuple([old_samples[chain][burnin:, :] " +
+                       "for chain in range(nchains)]))\n")
         out_file.write("        plot_param_dist(samples, [model.parameters[i].name for i in parameters_idxs])\n")
         out_file.write("        # log likelihood\n")
         out_file.write("        print('Plotting log-likelihoods')\n")
