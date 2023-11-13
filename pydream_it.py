@@ -387,9 +387,8 @@ if __name__ == '__main__':
         out_file.write("                      for i in range(n_files))))\n")
         out_file.write("        plot_log_likelihood(log_ps)\n")
         out_file.write("        # time courses\n")
-        out_file.write("        tspan = np.linspace(experiments_time[0], experiments_time[-1], " +
-                       "len(experiments_time) * 10 + 1)\n")
-
+        out_file.write("        print('Plotting time courses')\n")
+        out_file.write("        tspan = np.linspace(tspan[0], tspan[-1], int((tspan[-1]-tspan[0]) * 10 + 1))\n")
         out_file.write("        # only run sims for unique parameter sets with a log_p within a cutoff of the mean\n")
         out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][burnin + niterations * (n_files-1):] " +
                        "for i in range(nchains)]))\n")
@@ -397,7 +396,7 @@ if __name__ == '__main__':
         out_file.write("        param_values = np.array([param_values] * len(samples))\n")
         out_file.write("        for i in range(len(param_values)):\n")
         out_file.write("            param_values[i][parameters_idxs] = 10 ** samples[i]\n")
-        out_file.write("        print('Running and plotting %d simulations' % len(param_values))\n")
+        out_file.write("        print('Running %d simulations' % len(param_values))\n")
         out_file.write("        output_all = solver.run(tspan=tspan, param_values=param_values).all\n")
         out_file.write("        plot_time_courses(experiments_avg.dtype.names, tspan, output_all, counts=counts,\n")
         out_file.write("                          exp_data=(experiments_time, experiments_avg, experiments_se))\n")
