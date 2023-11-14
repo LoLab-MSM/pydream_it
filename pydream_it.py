@@ -140,7 +140,7 @@ def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=
             exp_time = exp_data[0]
             exp_mean = exp_data[1]
             exp_sdev = exp_data[2]
-            plt.errorbar(exp_time, exp_mean[obs_name], yerr=exp_sdev[obs_name],
+            plt.errorbar(exp_time[obs_name], exp_mean[obs_name], yerr=exp_sdev[obs_name],
                          capsize=6, fmt='o', ms=8, label=obs_name)
     plt.xlabel('time')
     plt.ylabel('concentration')
@@ -389,13 +389,12 @@ if __name__ == '__main__':
         out_file.write("                tuple(np.load('dreamzs_%dchain_logps_chain_%d_%d.npy' % " +
                        "(nchains, chain, niterations * (i+1))).flatten()\n")
         out_file.write("                      for i in range(n_files))))\n")
-        out_file.write("        plot_log_likelihood(log_ps)\n")
+        out_file.write("        plot_log_likelihood(log_ps, cutoff=2)\n")
         out_file.write("        # time courses\n")
         out_file.write("        print('Plotting time courses')\n")
         out_file.write("        tspan = np.linspace(tspan[0], tspan[-1], int((tspan[-1]-tspan[0]) * 10 + 1))\n")
         out_file.write("        # only run sims for unique parameter sets with a log_p within a cutoff of the mean\n")
-        out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][niterations * (n_files-1) + burnin:] " +
-                       "for i in range(nchains)]))\n")
+        out_file.write("        log_ps = np.concatenate(tuple(log_ps[i][burnin:] for i in range(nchains)))\n")
         out_file.write("        samples, counts = get_unique_samples_for_simulation(samples, log_ps, cutoff=2)\n")
         out_file.write("        param_values = np.array([param_values] * len(samples))\n")
         out_file.write("        for i in range(len(param_values)):\n")
