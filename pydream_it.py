@@ -86,25 +86,28 @@ def plot_param_dist(samples, labels, **kwargs):
             fig.delaxes(axs[row][col])
             col += 1
     # save plots
-    plt.savefig('fig_PyDREAM_histograms')
+    suffix = kwargs.get('suffix', '')
+    plt.savefig('fig_PyDREAM_histograms' + suffix)
 
 
-def plot_log_likelihood(log_ps):
+def plot_log_likelihood(log_ps, cutoff=None):
     plt.figure()
     nchains = len(log_ps)
-    cutoff = int(len(log_ps[0]) / 2)  # calculate mean and variance for last half of steps
+    burnin = int(len(log_ps[0]) / 2)  # calculate mean and variance for last half of steps
     log_ps_max = -np.inf
     log_ps_mean = 0
     log_ps_var = 0
     for chain in range(nchains):
         plt.plot(range(len(log_ps[chain])), log_ps[chain], label='chain %d' % chain)
         log_ps_max = np.max(log_ps[chain]) if log_ps_max < np.max(log_ps[chain]) else log_ps_max
-        log_ps_mean += np.mean(log_ps[chain][cutoff:]) / nchains
-        log_ps_var += np.var(log_ps[chain][cutoff:]) / nchains  # this is the mean of the variances, but that's fine
+        log_ps_mean += np.mean(log_ps[chain][burnin:]) / nchains
+        log_ps_var += np.var(log_ps[chain][burnin:]) / nchains  # this is the mean of the variances, but that's fine
     top = np.ceil(log_ps_mean + 5 * np.sqrt(log_ps_var))
     bottom = np.floor(log_ps_mean - 20 * np.sqrt(log_ps_var))
     print('max: %g, mean: %g, sdev: %g, top: %g, bottom: %g' %
           (log_ps_max, log_ps_mean, np.sqrt(log_ps_var), top, bottom))
+    if cutoff is not None:
+        plt.axhline(log_ps_mean - cutoff * np.sqrt(log_ps_var), color='k', ls='--', lw=2)
     plt.ylim(bottom=bottom, top=top)
     plt.xlabel('iteration')
     plt.ylabel('log-likelihood')
@@ -113,7 +116,7 @@ def plot_log_likelihood(log_ps):
     plt.savefig('fig_PyDREAM_log_ps')
 
 
-def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=None, fill_between=(5, 95)):
+def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=None, fill_between=(5, 95), **kwargs):
     plt.figure()
     output = np.copy(sim_output)
     # remove any simulations that produced NaNs
@@ -143,7 +146,8 @@ def plot_time_courses(observables, sim_tspan, sim_output, counts=None, exp_data=
     plt.ylabel('concentration')
     plt.legend(loc=0)
     plt.tight_layout()
-    plt.savefig('fig_PyDREAM_time_courses')
+    suffix = kwargs.get('suffix', '')
+    plt.savefig('fig_PyDREAM_time_courses' + suffix)
 
 
 def get_unique_samples_for_simulation(samples, log_ps, cutoff=None):
@@ -390,7 +394,7 @@ if __name__ == '__main__':
         out_file.write("        print('Plotting time courses')\n")
         out_file.write("        tspan = np.linspace(tspan[0], tspan[-1], int((tspan[-1]-tspan[0]) * 10 + 1))\n")
         out_file.write("        # only run sims for unique parameter sets with a log_p within a cutoff of the mean\n")
-        out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][burnin + niterations * (n_files-1):] " +
+        out_file.write("        log_ps = np.concatenate(tuple([log_ps[i][niterations * (n_files-1) + burnin:] " +
                        "for i in range(nchains)]))\n")
         out_file.write("        samples, counts = get_unique_samples_for_simulation(samples, log_ps, cutoff=2)\n")
         out_file.write("        param_values = np.array([param_values] * len(samples))\n")
