@@ -425,7 +425,8 @@ if __name__ == '__main__':
         out_file.write("            plot_time_courses(experiments_avg[n].dtype.names, tspan, output_all, " +
                        "counts=counts,\n")
         out_file.write("                              exp_data=(experiments_time[n], experiments_avg[n], " +
-                       "experiments_se[n]), suffix='_exp_%d' % n)\n")
+                       "experiments_se[n]),\n")
+        out_file.write("                              suffix='_exp_%d' % n)\n")
         out_file.write("        print('DONE')\n")
         out_file.write("\n")
         out_file.write("    except ImportError:\n")
