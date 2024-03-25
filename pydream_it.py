@@ -80,7 +80,7 @@ def plot_param_dist(samples, labels, **kwargs):
     print()
     fig.supxlabel(r'log$_{10}$ value', fontsize=fontsize)
     fig.supylabel('Density', fontsize=fontsize)
-    # delete exta plots
+    # delete extra plots
     if col > 0:
         while col < ncols:
             fig.delaxes(axs[row][col])
